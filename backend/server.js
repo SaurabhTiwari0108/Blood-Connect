@@ -1118,3 +1118,6 @@ app.delete('/api/users/email/:email', async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+// Export the Express API
+module.exports = app;
