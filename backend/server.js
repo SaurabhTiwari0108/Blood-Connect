@@ -107,6 +107,18 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    receivedCount: {
+        type: Number,
+        default: 0
+    },
+    isPremium: {
+        type: Boolean,
+        default: false
+    },
+    premiumExpiry: {
+        type: Date,
+        default: null
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -137,6 +149,69 @@ userSchema.pre('save', function(next) {
 });
 
 const User = mongoose.model('User', userSchema);
+
+// ============================================
+// Seed Admin User
+// ============================================
+async function seedAdmin() {
+    try {
+        const adminExists = await User.findOne({ userType: 'admin' });
+        if (!adminExists) {
+            console.log('No admin found. Creating default admin...');
+            const defaultAdmin = new User({
+                fullName: 'System Admin',
+                email: 'admin@bloodconnect.com',
+                password: 'admin123',
+                phone: '0000000000',
+                bloodGroup: 'O+',
+                city: 'System',
+                age: 30,
+                userType: 'admin'
+            });
+            await defaultAdmin.save();
+            console.log('✅ Default admin created: admin@bloodconnect.com / admin123');
+        }
+    } catch (error) {
+        console.error('Error seeding admin:', error);
+    }
+}
+seedAdmin();
+
+// ============================================
+// Blood Bank Schema & Seed
+// ============================================
+const bloodBankSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+    phone: { type: String, required: true },
+    availableBloodGroups: [{ type: String }],
+    contactPerson: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
+
+const BloodBank = mongoose.model('BloodBank', bloodBankSchema);
+
+async function seedBloodBanks() {
+    try {
+        const count = await BloodBank.countDocuments();
+        if (count === 0) {
+            console.log('Seeding dummy blood banks...');
+            const dummyBanks = [
+                { name: 'Red Cross Blood Bank', city: 'Mumbai', address: 'Bandra West, Mumbai', phone: '9876543210', availableBloodGroups: ['A+', 'O+', 'B+', 'AB+'], contactPerson: 'Dr. Sharma' },
+                { name: 'LifeLine City Blood Center', city: 'Mumbai', address: 'Andheri East, Mumbai', phone: '9876543211', availableBloodGroups: ['O-', 'A-', 'B-', 'AB-'], contactPerson: 'Dr. Verma' },
+                { name: 'Sanjeevani Blood Bank', city: 'Delhi', address: 'Connaught Place, Delhi', phone: '9876543212', availableBloodGroups: ['O+', 'B+', 'A+'], contactPerson: 'Dr. Gupta' },
+                { name: 'Apollo Blood Reserve', city: 'Delhi', address: 'South Ex, Delhi', phone: '9876543213', availableBloodGroups: ['A-', 'O-', 'B+'], contactPerson: 'Dr. Singh' },
+                { name: 'Care Hospital Blood Bank', city: 'Pune', address: 'Viman Nagar, Pune', phone: '9876543214', availableBloodGroups: ['A+', 'O+', 'B+', 'AB+', 'O-'], contactPerson: 'Dr. Patil' }
+            ];
+            await BloodBank.insertMany(dummyBanks);
+            console.log('✅ Dummy blood banks seeded successfully.');
+        }
+    } catch (error) {
+        console.error('Error seeding blood banks:', error);
+    }
+}
+seedBloodBanks();
 
 // ============================================
 // Donation Request Schema
@@ -186,9 +261,18 @@ const donationRequestSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    acceptedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    completionCode: {
+        type: String,
+        default: null
+    },
     status: {
         type: String,
-        enum: ['pending', 'fulfilled', 'cancelled'],
+        enum: ['pending', 'accepted', 'fulfilled', 'cancelled'],
         default: 'pending'
     },
     createdAt: {
@@ -241,6 +325,12 @@ const donationHistorySchema = new mongoose.Schema({
         type: String,
         enum: ['completed', 'verified', 'pending'],
         default: 'completed'
+    },
+    patientName: {
+        type: String
+    },
+    patientPhone: {
+        type: String
     },
     notes: {
         type: String
@@ -594,6 +684,7 @@ app.get('/api/donation-requests', async (req, res) => {
 
         const requests = await DonationRequest.find(filter)
             .populate('requesterId', 'fullName phone email')
+            .populate('acceptedBy', 'fullName phone email city bloodGroup donationCount')
             .sort({ createdAt: -1 });
 
         res.status(200).json({
@@ -607,6 +698,128 @@ app.get('/api/donation-requests', async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Error fetching donation requests',
+            error: error.message 
+        });
+    }
+});
+
+// ============================================
+// Accept Donation Request
+// ============================================
+app.post('/api/donation-requests/:id/accept', async (req, res) => {
+    try {
+        const { donorId } = req.body;
+        
+        if (!donorId) {
+            return res.status(400).json({ success: false, message: 'Donor ID is required' });
+        }
+
+        const request = await DonationRequest.findById(req.params.id);
+        
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+        
+        if (request.status !== 'pending') {
+            return res.status(400).json({ success: false, message: 'Request is no longer pending' });
+        }
+
+        // Generate a 6-digit random code
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+        request.status = 'accepted';
+        request.acceptedBy = donorId;
+        request.completionCode = code;
+
+        await request.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Request accepted successfully',
+            data: request
+        });
+
+    } catch (error) {
+        console.error('Error accepting request:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error accepting request',
+            error: error.message 
+        });
+    }
+});
+
+// ============================================
+// Complete Donation Request
+// ============================================
+app.post('/api/donation-requests/:id/complete', async (req, res) => {
+    try {
+        const { donorId, completionCode } = req.body;
+        
+        if (!donorId || !completionCode) {
+            return res.status(400).json({ success: false, message: 'Donor ID and Completion Code are required' });
+        }
+
+        const request = await DonationRequest.findById(req.params.id);
+        
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+        
+        if (request.status !== 'accepted') {
+            return res.status(400).json({ success: false, message: 'Request is not in accepted state' });
+        }
+
+        if (request.acceptedBy.toString() !== donorId) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to complete this request' });
+        }
+
+        if (request.completionCode !== completionCode) {
+            return res.status(400).json({ success: false, message: 'Invalid completion code' });
+        }
+
+        request.status = 'fulfilled';
+        await request.save();
+
+        // Increment donor points
+        await User.findByIdAndUpdate(donorId, {
+            $inc: { donationCount: request.unitsNeeded },
+            lastDonationDate: new Date()
+        });
+
+        // Increment receiver points
+        if (request.requesterId) {
+            await User.findByIdAndUpdate(request.requesterId, {
+                $inc: { receivedCount: request.unitsNeeded }
+            });
+        }
+
+        // Add to donation history automatically
+        const donation = new DonationHistory({
+            donorId,
+            hospitalName: request.hospitalName,
+            hospitalAddress: request.hospitalAddress,
+            city: request.city,
+            unitsDonated: request.unitsNeeded,
+            bloodGroup: request.bloodGroup,
+            patientName: request.patientName,
+            patientPhone: request.contactNumber,
+            notes: `Donated for patient ${request.patientName} via BloodConnect Request`,
+            certificateNumber: `BC${Date.now()}${Math.floor(Math.random() * 1000)}`
+        });
+        await donation.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Donation completed successfully',
+            data: request
+        });
+
+    } catch (error) {
+        console.error('Error completing request:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error completing request',
             error: error.message 
         });
     }
@@ -773,6 +986,111 @@ app.get('/api/stats', async (req, res) => {
             message: 'Error fetching statistics',
             error: error.message 
         });
+    }
+});
+
+// ============================================
+// Admin APIs
+// ============================================
+
+// Get all users
+app.get('/api/users', async (req, res) => {
+    try {
+        const query = req.query.userType ? { userType: req.query.userType } : {};
+        const users = await User.find(query).select('-password').sort({ createdAt: -1 });
+        res.json({ success: true, data: users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// Delete user by ID
+app.delete('/api/users/:id', async (req, res) => {
+    try {
+        const user = await User.findByIdAndDelete(req.params.id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// Delete donation request by ID
+app.delete('/api/donation-requests/:id', async (req, res) => {
+    try {
+        const request = await DonationRequest.findByIdAndDelete(req.params.id);
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Request not found' });
+        }
+        res.json({ success: true, message: 'Request deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// Admin Stats
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        const totalDonors = await User.countDocuments({ userType: 'donor' });
+        const totalReceivers = await User.countDocuments({ userType: 'receiver' });
+        const totalRequests = await DonationRequest.countDocuments();
+        const fulfilledRequests = await DonationRequest.countDocuments({ status: 'fulfilled' });
+
+        res.json({
+            success: true,
+            data: {
+                totalDonors,
+                totalReceivers,
+                totalRequests,
+                fulfilledRequests
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// ============================================
+// Premium & Blood Bank APIs
+// ============================================
+
+// Upgrade User to Premium
+app.post('/api/users/:id/upgrade', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { planId } = req.body; // e.g., 'monthly', 'yearly'
+        
+        let monthsToAdd = planId === 'yearly' ? 12 : 1;
+        
+        let expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + monthsToAdd);
+
+        const user = await User.findByIdAndUpdate(userId, {
+            isPremium: true,
+            premiumExpiry: expiryDate
+        }, { new: true }).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, message: 'Upgraded to Premium successfully', data: user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
+// Get Blood Banks (Filtered by city, expects premium user check in frontend)
+app.get('/api/bloodbanks', async (req, res) => {
+    try {
+        const city = req.query.city;
+        const query = city ? { city: { $regex: new RegExp(`^${city}$`, 'i') } } : {};
+        const bloodBanks = await BloodBank.find(query).sort({ createdAt: -1 });
+        res.json({ success: true, data: bloodBanks });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 });
 

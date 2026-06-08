@@ -47,6 +47,21 @@
                 <span>Find Donors</span>
             </a>
             
+            <a href="#bloodbanks" class="nav-item" id="navBloodBanks" style="display:none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                <span>Blood Banks</span>
+            </a>
+
+            <a href="#premium" class="nav-item premium-nav">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
+                <span>Premium Access</span>
+            </a>
+            
             <a href="#profile" class="nav-item">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -96,6 +111,8 @@
 
         <!-- Dashboard Content -->
         <div class="dashboard-content">
+            <!-- DASHBOARD SECTION -->
+            <div id="dashboard-section" class="nav-section active">
             <!-- Quick Action Button -->
             <button class="btn-create-request" id="createRequestBtn">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -129,7 +146,7 @@
                     </div>
                     <div class="stat-info">
                         <h3 id="fulfilledRequests">0</h3>
-                        <p>Fulfilled Requests</p>
+                        <p>Units Received</p>
                     </div>
                 </div>
 
@@ -160,6 +177,10 @@
                 </div>
             </div>
 
+            </div>
+
+            <!-- MY REQUESTS SECTION -->
+            <div id="my-requests-section" class="nav-section" style="display: none;">
             <!-- My Requests Section -->
             <div class="requests-section">
                 <div class="section-header">
@@ -175,10 +196,14 @@
                 </div>
             </div>
 
+            </div>
+
+            <!-- DONORS SECTION -->
+            <div id="donors-section" class="nav-section" style="display: none;">
             <!-- Available Donors Section -->
             <div class="donors-section">
                 <div class="section-header">
-                    <h3>Available Donors in Your Area</h3>
+                    <h3>Registered Donors</h3>
                     <div class="search-box">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -190,6 +215,90 @@
                 <div class="donors-grid" id="donorsGrid">
                     <!-- Available donors will be loaded here -->
                 </div>
+            </div>
+            </div>
+
+            <!-- PROFILE SECTION -->
+            <div id="profile-section" class="nav-section" style="display: none;">
+                <div class="profile-card" style="background: var(--white); border-radius: 12px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; margin: 0 auto; text-align: center;">
+                    <img src="https://ui-avatars.com/api/?name=User&background=3498db&color=fff&size=120" id="profileImage" style="border-radius: 50%; margin-bottom: 20px;">
+                    <h2 id="profileName" style="margin-bottom: 10px;">Loading...</h2>
+                    <p id="profileEmail" style="color: #495057; margin-bottom: 20px;">loading@example.com</p>
+                    <button class="btn-primary" style="margin: 0 auto;">Edit Profile</button>
+                </div>
+            </div>
+
+            <!-- PREMIUM SECTION -->
+            <div id="premium-section" class="nav-section" style="display: none;">
+                <div class="premium-header text-center">
+                    <h2 class="premium-title">Upgrade to BloodConnect Premium 🌟</h2>
+                    <p class="premium-subtitle">Get instant access to real-time Blood Bank directories & immediate order placements.</p>
+                </div>
+                
+                <div class="pricing-cards">
+                    <div class="pricing-card">
+                        <h3>Monthly Plan</h3>
+                        <div class="price">₹699<span>/month</span></div>
+                        <ul class="features">
+                            <li>✓ Access to Nearby Blood Banks</li>
+                            <li>✓ Instant Blood Orders</li>
+                            <li>✓ Premium Support</li>
+                        </ul>
+                        <button class="btn-premium" onclick="openPaymentModal('monthly')">Choose Monthly</button>
+                    </div>
+                    <div class="pricing-card popular">
+                        <div class="popular-badge">Most Popular</div>
+                        <h3>Yearly Plan</h3>
+                        <div class="price">₹5999<span>/year</span></div>
+                        <ul class="features">
+                            <li>✓ Access to Nearby Blood Banks</li>
+                            <li>✓ Instant Blood Orders</li>
+                            <li>✓ Premium Support</li>
+                            <li>✓ Save ₹2389 annually</li>
+                        </ul>
+                        <button class="btn-premium" onclick="openPaymentModal('yearly')">Choose Yearly</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOOD BANKS SECTION -->
+            <div id="bloodbanks-section" class="nav-section" style="display: none;">
+                <div class="section-header">
+                    <h3>Nearby Blood Banks <span style="font-size:12px; background:linear-gradient(135deg, #FFD700, #FFA500); padding:2px 8px; border-radius:10px; color:#fff;">PREMIUM</span></h3>
+                    <p style="color:var(--gray-500); font-size:14px;">Instant blood supply directly from local banks.</p>
+                </div>
+                <div class="bloodbanks-grid" id="bloodbanksGrid">
+                    <!-- Blood banks loaded via JS -->
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content premium-modal">
+            <div class="modal-header">
+                <h2>Complete Your Payment</h2>
+                <button class="modal-close" onclick="closePaymentModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="payment-details text-center">
+                <p>Scan the QR Code below or use the UPI ID to pay <strong id="paymentAmount">₹699</strong>.</p>
+                <div class="qr-placeholder">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=your-upi-id@bank&pn=BloodConnect&am=699" alt="UPI QR Code" id="paymentQR">
+                </div>
+                <div class="upi-id">UPI ID: <strong>your-upi-id@bank</strong></div>
+                <div class="input-group" style="margin-top:20px; text-align:left;">
+                    <label>Enter UTR / Transaction ID</label>
+                    <input type="text" id="transactionId" placeholder="e.g., 213456789012" required>
+                </div>
+                <button class="btn-premium" style="width:100%; margin-top:20px;" onclick="confirmPayment()">Verify Payment</button>
             </div>
         </div>
     </div>

@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     
     currentUser = JSON.parse(userData);
+    if (currentUser._id && !currentUser.id) {
+        currentUser.id = currentUser._id;
+    }
     
     // Verify user is a receiver
     if (currentUser.userType !== 'receiver') {
@@ -33,6 +36,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadMyRequests();
     await loadAvailableDonors();
     await loadStats();
+    
+    // Check Premium status
+    if (currentUser.isPremium) {
+        document.getElementById('navBloodBanks').style.display = 'flex';
+        await loadBloodBanks();
+    }
     
     // Setup event listeners
     setupEventListeners();
@@ -62,6 +71,9 @@ async function loadUserProfile() {
         
         if (response.ok) {
             const data = await response.json();
+            if (data.data && data.data._id && !data.data.id) {
+                data.data.id = data.data._id;
+            }
             // Update local storage with latest data
             localStorage.setItem('bloodconnect_user', JSON.stringify(data.data));
         }
@@ -87,13 +99,27 @@ async function loadStats() {
         const donorsResponse = await fetch(`${API_URL}/donors?bloodGroup=${currentUser.bloodGroup}&city=${currentUser.city}`);
         const donorsData = await donorsResponse.json();
         
+        // Get user profile to get receivedCount
+        const userResponse = await fetch(`${API_URL}/users/${currentUser.id}`);
+        let receivedCount = 0;
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            receivedCount = userData.data.receivedCount || 0;
+            
+            // Ensure .id property exists for consistency
+            if (userData.data._id && !userData.data.id) {
+                userData.data.id = userData.data._id;
+            }
+            
+            // Update local storage to keep it fresh
+            localStorage.setItem('bloodconnect_user', JSON.stringify(userData.data));
+            currentUser = userData.data;
+        }
+
         // Update stats
         document.getElementById('activeRequests').textContent = myRequests.length;
         document.getElementById('availableDonors').textContent = donorsData.count || 0;
-        
-        // Count fulfilled requests (you might need to fetch this separately)
-        const fulfilledCount = 0; // Placeholder
-        document.getElementById('fulfilledRequests').textContent = fulfilledCount;
+        document.getElementById('fulfilledRequests').textContent = receivedCount;
         
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -195,6 +221,19 @@ function displayMyRequests(requests) {
                         <span>Status: ${req.status}</span>
                     </div>
                 </div>
+
+                ${req.status === 'accepted' && req.acceptedBy ? `
+                <div style="margin-top: 15px; padding: 15px; background: rgba(46, 204, 113, 0.1); border-radius: 8px; border-left: 4px solid var(--green);">
+                    <h5 style="margin-bottom: 8px; color: var(--green);">Accepted by Donor</h5>
+                    <p><strong>Name:</strong> ${req.acceptedBy.fullName}</p>
+                    <p><strong>Contact:</strong> ${req.acceptedBy.phone}</p>
+                    <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; text-align: center;">
+                        <span style="font-size: 12px; color: var(--gray-500);">Give this code to donor after donation</span>
+                        <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: var(--red);">${req.completionCode}</div>
+                    </div>
+                </div>
+                ` : ''}
+
             </div>
             <div class="request-actions">
                 ${req.status === 'pending' ? `
@@ -212,8 +251,15 @@ function displayMyRequests(requests) {
                         </svg>
                         Cancel
                     </button>
+                ` : req.status === 'accepted' ? `
+                    <button class="btn-primary" style="flex: 1;" onclick="contactDonor('${req.acceptedBy.phone}', '${req.acceptedBy.fullName}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        Contact Donor
+                    </button>
                 ` : `
-                    <button class="btn-cancel" style="flex: 1;" disabled>
+                    <button class="btn-cancel" style="flex: 1; opacity: 0.7;" disabled>
                         ${req.status === 'fulfilled' ? 'Fulfilled' : 'Cancelled'}
                     </button>
                 `}
@@ -227,7 +273,7 @@ function displayMyRequests(requests) {
 // ============================================
 async function loadAvailableDonors() {
     try {
-        const response = await fetch(`${API_URL}/donors?bloodGroup=${currentUser.bloodGroup}&city=${currentUser.city}`);
+        const response = await fetch(`${API_URL}/donors`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch donors');
@@ -282,12 +328,22 @@ function displayDonors(donors) {
                     <span>${donor.donationCount || 0} Donations</span>
                 </div>
             </div>
-            <button class="btn-contact" onclick="contactDonor('${donor.phone}', '${donor.fullName}')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                Contact Donor
-            </button>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 13px;" onclick="requestBloodFrom('${donor.bloodGroup}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Request
+                </button>
+                <button class="btn-contact" style="flex: 1; padding: 10px; font-size: 13px;" onclick="contactDonor('${donor.phone}', '${donor.fullName}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    Contact
+                </button>
+            </div>
         </div>
     `).join('');
 }
@@ -371,6 +427,21 @@ function setupEventListeners() {
     document.querySelector('#requestModal .modal-overlay').addEventListener('click', () => {
         closeModal(document.getElementById('requestModal'));
     });
+    
+    // Navigation
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (item.getAttribute('href') !== '#') {
+                e.preventDefault();
+                navItems.forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+                
+                const section = item.getAttribute('href').substring(1);
+                handleNavigation(section);
+            }
+        });
+    });
 }
 
 // ============================================
@@ -422,6 +493,27 @@ async function handleRequestSubmit(e) {
 // Utility Functions
 // ============================================
 
+// Navigation Handler
+function handleNavigation(section) {
+    console.log('Navigating to:', section);
+    
+    // Hide all sections
+    const sections = document.querySelectorAll('.nav-section');
+    sections.forEach(s => {
+        if(s) s.style.display = 'none';
+        if(s) s.classList.remove('active');
+    });
+    
+    // Show target section
+    const targetSection = document.getElementById(`${section}-section`);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        setTimeout(() => {
+            targetSection.classList.add('active');
+        }, 10);
+    }
+}
+
 // Modal Functions
 function openModal(modal) {
     modal.classList.add('active');
@@ -437,6 +529,15 @@ function closeModal(modal) {
 function contactDonor(phone, name) {
     if (confirm(`Do you want to call ${name} at ${phone}?`)) {
         window.location.href = `tel:${phone}`;
+    }
+}
+
+// Request Blood from specific blood group
+function requestBloodFrom(bloodGroup) {
+    openModal(document.getElementById('requestModal'));
+    const bloodGroupSelect = document.getElementById('bloodGroup');
+    if (bloodGroupSelect) {
+        bloodGroupSelect.value = bloodGroup;
     }
 }
 
@@ -599,3 +700,94 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// ============================================
+// Premium & Blood Banks Logic
+// ============================================
+let selectedPlan = null;
+
+function openPaymentModal(plan) {
+    selectedPlan = plan;
+    const amount = plan === 'yearly' ? '₹5999' : '₹699';
+    document.getElementById('paymentAmount').innerText = amount;
+    openModal(document.getElementById('paymentModal'));
+}
+
+function closePaymentModal() {
+    closeModal(document.getElementById('paymentModal'));
+}
+
+async function confirmPayment() {
+    const txnId = document.getElementById('transactionId').value;
+    if (!txnId) {
+        showNotification('Please enter UTR or Transaction ID', 'error');
+        return;
+    }
+
+    try {
+        showNotification('Verifying payment...', 'info');
+        const userId = currentUser.id || currentUser._id;
+        // Simulated API call for payment verification
+        const response = await fetch(`${API_URL}/users/${userId}/upgrade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ planId: selectedPlan, transactionId: txnId })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            closePaymentModal();
+            showNotification('Welcome to Premium! 🎉', 'success');
+            
+            // Update local storage
+            currentUser.isPremium = true;
+            localStorage.setItem('bloodconnect_user', JSON.stringify(currentUser));
+            
+            // Unlock features
+            document.getElementById('navBloodBanks').style.display = 'flex';
+            await loadBloodBanks();
+            
+            // Go to blood banks section
+            document.getElementById('navBloodBanks').click();
+        } else {
+            showNotification(data.message || 'Payment verification failed', 'error');
+        }
+    } catch (error) {
+        console.error('Upgrade Error:', error);
+        showNotification('Something went wrong. Try again later.', 'error');
+    }
+}
+
+async function loadBloodBanks() {
+    if (!currentUser.isPremium) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/bloodbanks?city=${currentUser.city}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const grid = document.getElementById('bloodbanksGrid');
+            if (data.data.length === 0) {
+                grid.innerHTML = '<p style="text-align:center; grid-column: 1/-1;">No blood banks found in your city yet.</p>';
+                return;
+            }
+            
+            grid.innerHTML = data.data.map(bank => `
+                <div class="bloodbank-card">
+                    <h4>${bank.name}</h4>
+                    <div class="bloodbank-details">
+                        <p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> ${bank.address}, ${bank.city}</p>
+                        <p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${bank.phone}</p>
+                        <p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Contact: ${bank.contactPerson || 'Reception'}</p>
+                    </div>
+                    <div class="inventory-tags">
+                        ${bank.availableBloodGroups.map(bg => `<span class="inventory-tag">${bg}</span>`).join('')}
+                    </div>
+                    <button class="btn-premium" style="font-size: 14px; padding: 10px;" onclick="alert('Your order request has been sent to ${bank.name}. They will contact you shortly.')">Order Blood Now</button>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading blood banks:', error);
+    }
+}

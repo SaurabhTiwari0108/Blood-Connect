@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - BloodConnect</title>
+    <link rel="stylesheet" href="admin-dashboard.css">
+    <style>
+        .table-container {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            margin-bottom: 30px;
+            width: 100%;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        th {
+            background: var(--gray-50);
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        td {
+            font-size: 14px;
+            color: var(--gray-700);
+        }
+        tr:hover {
+            background: rgba(0,0,0,0.02);
+        }
+        .btn-delete {
+            padding: 6px 12px;
+            background: var(--red);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: 0.3s ease;
+        }
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M30 10 C30 10, 20 20, 20 28 C20 36, 25 42, 30 42 C35 42, 40 36, 40 28 C40 20, 30 10, 30 10 Z" fill="#ff4757"/>
+                </svg>
+                <span>BloodConnect</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <span>Overview</span>
+            </a>
+            
+            <a href="#users" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span>Manage Users</span>
+            </a>
+            
+            <a href="#requests" class="nav-item">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>Manage Requests</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="#" class="nav-item" id="logoutBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>Admin Panel</h1>
+                <p>Manage system, users, and requests</p>
+            </div>
+            <div class="header-right">
+                <div class="user-profile">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=2c3e50&color=fff" alt="Profile" id="headerProfileImg">
+                    <div class="user-info">
+                        <span class="user-name" id="headerUserName">Loading...</span>
+                        <span class="user-type">System Admin</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content">
+            <!-- OVERVIEW SECTION -->
+            <div id="dashboard-section" class="nav-section active">
+                <div class="stats-grid">
+                    <div class="stat-card card-blue">
+                        <div class="stat-info">
+                            <h3 id="statDonors">0</h3>
+                            <p>Total Donors</p>
+                        </div>
+                    </div>
+                    <div class="stat-card card-orange">
+                        <div class="stat-info">
+                            <h3 id="statReceivers">0</h3>
+                            <p>Total Receivers</p>
+                        </div>
+                    </div>
+                    <div class="stat-card card-red">
+                        <div class="stat-info">
+                            <h3 id="statRequests">0</h3>
+                            <p>Total Requests</p>
+                        </div>
+                    </div>
+                    <div class="stat-card card-green">
+                        <div class="stat-info">
+                            <h3 id="statCompleted">0</h3>
+                            <p>Fulfilled Requests</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- USERS SECTION -->
+            <div id="users-section" class="nav-section" style="display: none;">
+                <div class="section-header">
+                    <h3>All Users</h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Blood Group</th>
+                                <th>City</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- REQUESTS SECTION -->
+            <div id="requests-section" class="nav-section" style="display: none;">
+                <div class="section-header">
+                    <h3>All Donation Requests</h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Patient Name</th>
+                                <th>Hospital</th>
+                                <th>Blood Required</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestsTableBody">
+                            <!-- Requests will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-dashboard.js"></script>
+</body>
+</html>

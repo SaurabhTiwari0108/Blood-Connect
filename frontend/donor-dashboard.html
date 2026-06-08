@@ -105,7 +105,9 @@
 
         <!-- Dashboard Content -->
         <div class="dashboard-content">
-            <!-- Stats Cards -->
+            <!-- DASHBOARD SECTION -->
+            <div id="dashboard-section" class="nav-section active">
+                <!-- Stats Cards -->
             <div class="stats-grid">
                 <div class="stat-card card-red">
                     <div class="stat-icon">
@@ -208,10 +210,13 @@
                 </div>
             </div>
 
-            <!-- Profile & History Section -->
-            <div class="profile-history-section">
-                <!-- Profile Card -->
-                <div class="profile-card">
+            </div>
+
+            <!-- PROFILE SECTION -->
+            <div id="profile-section" class="nav-section" style="display: none;">
+                <div class="profile-history-section" style="grid-template-columns: 1fr; max-width: 600px; margin: 0 auto;">
+                    <!-- Profile Card -->
+                    <div class="profile-card">
                     <div class="profile-header">
                         <div class="profile-image-container">
                             <img src="https://ui-avatars.com/api/?name=User&background=ff4757&color=fff&size=120" alt="Profile" id="profileImage">
@@ -282,9 +287,14 @@
                         <span>Edit Profile</span>
                     </button>
                 </div>
+                </div>
+            </div>
 
-                <!-- Donation History -->
-                <div class="history-card">
+            <!-- HISTORY SECTION -->
+            <div id="history-section" class="nav-section" style="display: none;">
+                <div class="profile-history-section" style="grid-template-columns: 1fr; max-width: 800px; margin: 0 auto;">
+                    <!-- Donation History -->
+                    <div class="history-card">
                     <div class="card-header">
                         <h3>Recent Donations</h3>
                         <a href="#" class="view-all-link">View All</a>
@@ -292,6 +302,19 @@
                     <div class="history-timeline" id="donationTimeline">
                         <!-- Timeline items will be loaded here -->
                     </div>
+                </div>
+                </div>
+            </div>
+
+            <!-- REQUESTS SECTION -->
+            <div id="requests-section" class="nav-section" style="display: none;">
+                <!-- Accepted Requests Section -->
+                <div class="requests-section" style="margin-bottom: 30px;">
+                <div class="section-header">
+                    <h3>My Accepted Requests</h3>
+                </div>
+                <div class="requests-grid" id="acceptedRequestsContainer">
+                    <!-- Accepted requests will be loaded here -->
                 </div>
             </div>
 
@@ -309,6 +332,13 @@
                 <div class="requests-grid" id="requestsGrid">
                     <!-- Requests will be loaded here -->
                 </div>
+            </div>
+            </div>
+
+            <!-- CERTIFICATES SECTION -->
+            <div id="certificates-section" class="nav-section" style="display: none; text-align: center; padding: 50px;">
+                <h2>Certificates</h2>
+                <p style="color: var(--gray-700); margin-top: 10px;">Coming soon...</p>
             </div>
         </div>
     </div>

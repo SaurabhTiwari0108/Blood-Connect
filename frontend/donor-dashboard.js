@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadUserProfile();
     await loadDonationHistory();
     await loadActiveRequests();
+    await loadAcceptedRequests();
     initializeCharts();
     
     // Setup event listeners
@@ -107,34 +108,16 @@ async function loadUserProfile() {
 // Load Donation History
 // ============================================
 async function loadDonationHistory() {
-    // Sample donation history (replace with actual API call)
-    const donations = [
-        {
-            date: new Date('2024-11-15'),
-            hospital: 'AIIMS Delhi',
-            units: 1,
-            location: 'New Delhi'
-        },
-        {
-            date: new Date('2024-08-20'),
-            hospital: 'Fortis Hospital',
-            units: 1,
-            location: 'Gurgaon'
-        },
-        {
-            date: new Date('2024-05-10'),
-            hospital: 'Max Hospital',
-            units: 1,
-            location: 'Delhi'
-        },
-        {
-            date: new Date('2024-02-05'),
-            hospital: 'Apollo Hospital',
-            units: 1,
-            location: 'Noida'
+    let donations = [];
+    try {
+        const response = await fetch(`${API_URL}/donations/history/${currentUser.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            donations = data.data || [];
         }
-    ];
-    
+    } catch (error) {
+        console.error('Error loading donation history:', error);
+    }
     const timeline = document.getElementById('donationTimeline');
     
     if (donations.length === 0) {
@@ -149,8 +132,11 @@ async function loadDonationHistory() {
         return;
     }
     
-    timeline.innerHTML = donations.map((donation, index) => `
-        <div class="timeline-item" style="animation-delay: ${index * 0.1}s">
+    timeline.innerHTML = donations.map((donation, index) => {
+        // Safe conversion of objects for onclick
+        const donJson = JSON.stringify(donation).replace(/"/g, '&quot;');
+        return `
+        <div class="timeline-item" style="animation-delay: ${index * 0.1}s; cursor: pointer; transition: background 0.3s;" onclick="showDonationDetails('${donJson}')" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='transparent'">
             <div class="timeline-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -158,27 +144,80 @@ async function loadDonationHistory() {
             </div>
             <div class="timeline-content">
                 <div class="timeline-header">
-                    <span class="timeline-title">${donation.hospital}</span>
-                    <span class="timeline-date">${formatDate(donation.date)}</span>
+                    <span class="timeline-title">${donation.hospitalName || donation.hospital || 'Hospital'}</span>
+                    <span class="timeline-date">${formatDate(donation.donationDate || donation.date)}</span>
                 </div>
                 <div class="timeline-details">
                     <span class="timeline-detail">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                         </svg>
-                        ${donation.units} Unit
+                        ${donation.unitsDonated || donation.units || 1} Unit(s)
                     </span>
                     <span class="timeline-detail">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
-                        ${donation.location}
+                        ${donation.city || donation.location || 'Location'}
                     </span>
                 </div>
+                <div style="font-size: 12px; color: var(--gray-500); margin-top: 5px;">Click to view full details</div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
+}
+
+// ============================================
+// Show Donation Details Modal
+// ============================================
+function showDonationDetails(donationStr) {
+    const donation = JSON.parse(donationStr);
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('donationDetailsModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'donationDetailsModal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.zIndex = '1000';
+        
+        modal.innerHTML = `
+            <div style="background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                    <h3 style="margin: 0; color: var(--red);">Donation Details</h3>
+                    <button onclick="document.getElementById('donationDetailsModal').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+                </div>
+                <div id="donationModalContent" style="line-height: 1.6; color: var(--gray-700);">
+                    <!-- Content will be injected here -->
+                </div>
+                <button onclick="document.getElementById('donationDetailsModal').style.display='none'" class="btn-primary" style="width: 100%; margin-top: 20px;">Close</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    const content = document.getElementById('donationModalContent');
+    content.innerHTML = `
+        <p><strong>Patient Name:</strong> ${donation.patientName || 'N/A'}</p>
+        <p><strong>Patient Phone:</strong> ${donation.patientPhone || 'N/A'}</p>
+        <p><strong>Hospital:</strong> ${donation.hospitalName || 'N/A'}</p>
+        <p><strong>Location:</strong> ${donation.city || 'N/A'}</p>
+        <p><strong>Date:</strong> ${formatDate(donation.donationDate)}</p>
+        <p><strong>Units Donated:</strong> ${donation.unitsDonated || 1}</p>
+        <p><strong>Blood Group:</strong> ${donation.bloodGroup || 'N/A'}</p>
+        <p><strong>Notes:</strong> ${donation.notes || 'N/A'}</p>
+    `;
+    
+    modal.style.display = 'flex';
 }
 
 // ============================================
@@ -195,11 +234,16 @@ async function loadActiveRequests() {
         const data = await response.json();
         let requests = data.data || [];
         
-        // Filter by user's city and blood group compatibility
-        requests = requests.filter(req => {
-            const isCompatible = isBloodCompatible(currentUser.bloodGroup, req.bloodGroup);
-            const isSameCity = req.city.toLowerCase() === currentUser.city.toLowerCase();
-            return isCompatible && isSameCity;
+        // Filter by blood group compatibility
+        requests = requests.filter(req => isBloodCompatible(currentUser.bloodGroup, req.bloodGroup));
+        
+        // Sort: Same city first, then by date
+        requests.sort((a, b) => {
+            const aSameCity = a.city.toLowerCase() === currentUser.city.toLowerCase();
+            const bSameCity = b.city.toLowerCase() === currentUser.city.toLowerCase();
+            if (aSameCity && !bSameCity) return -1;
+            if (!aSameCity && bSameCity) return 1;
+            return new Date(b.createdAt) - new Date(a.createdAt);
         });
         
         displayRequests(requests);
@@ -568,11 +612,132 @@ function updateChartData(period) {
 // ============================================
 // Respond to Request
 // ============================================
-function respondToRequest(requestId) {
-    showNotification('Thank you for your willingness to donate! Hospital will contact you soon.', 'success');
+async function respondToRequest(requestId) {
+    if (!confirm('Are you sure you want to accept this request? You will need to donate blood to this patient.')) {
+        return;
+    }
     
-    // Here you would typically make an API call to notify the requester
-    console.log('Responding to request:', requestId);
+    try {
+        const response = await fetch(`${API_URL}/donation-requests/${requestId}/accept`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ donorId: currentUser.id })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Request accepted successfully! Please contact the hospital/receiver.', 'success');
+            await loadActiveRequests();
+            await loadAcceptedRequests();
+        } else {
+            showNotification(data.message || 'Failed to accept request', 'error');
+        }
+    } catch (error) {
+        console.error('Error accepting request:', error);
+        showNotification('Network error! Please try again.', 'error');
+    }
+}
+
+// ============================================
+// Load Accepted Requests
+// ============================================
+async function loadAcceptedRequests() {
+    try {
+        const response = await fetch(`${API_URL}/donation-requests?status=accepted`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch accepted requests');
+        }
+        
+        const data = await response.json();
+        let requests = data.data || [];
+        
+        // Filter by current user
+        requests = requests.filter(req => {
+            const acceptedById = req.acceptedBy?._id || req.acceptedBy;
+            return acceptedById === currentUser.id;
+        });
+        
+        displayAcceptedRequests(requests);
+    } catch (error) {
+        console.error('Error loading accepted requests:', error);
+    }
+}
+
+// ============================================
+// Display Accepted Requests
+// ============================================
+function displayAcceptedRequests(requests) {
+    const container = document.getElementById('acceptedRequestsContainer');
+    if (!container) return; // Might not exist in HTML yet
+    
+    if (requests.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--gray-700);">
+                <p>You haven't accepted any requests recently.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = requests.map((req, index) => `
+        <div class="request-card" style="border-left: 4px solid var(--green); margin-bottom: 15px;">
+            <div class="request-header">
+                <div class="request-blood-group">${req.bloodGroup}</div>
+                <span class="urgency-badge" style="background: var(--green); color: white;">Accepted</span>
+            </div>
+            <div class="request-info">
+                <h4>${req.patientName} - ${req.hospitalName}</h4>
+                <p>Contact: ${req.contactNumber}</p>
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-200);">
+                    <p style="font-size: 14px; margin-bottom: 5px;">Enter Completion Code from Receiver:</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="code-${req._id}" placeholder="6-digit code" style="flex: 1; padding: 8px; border: 1px solid var(--gray-300); border-radius: 4px;">
+                        <button class="btn-primary" onclick="completeDonation('${req._id}')" style="padding: 8px 15px;">Verify</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ============================================
+// Complete Donation (Verify Code)
+// ============================================
+async function completeDonation(requestId) {
+    const codeInput = document.getElementById(`code-${requestId}`);
+    const code = codeInput.value.trim();
+    
+    if (!code) {
+        showNotification('Please enter the completion code', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/donation-requests/${requestId}/complete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ donorId: currentUser.id, completionCode: code })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Donation verified successfully! Thank you!', 'success');
+            await loadAcceptedRequests();
+            await loadUserProfile(); // update donation count
+        } else {
+            showNotification(data.message || 'Invalid code or failed to verify', 'error');
+        }
+    } catch (error) {
+        console.error('Error completing request:', error);
+        showNotification('Network error! Please try again.', 'error');
+    }
 }
 
 // ============================================
@@ -590,22 +755,21 @@ function contactRequester(phone) {
 function handleNavigation(section) {
     console.log('Navigating to:', section);
     
-    switch(section) {
-        case 'dashboard':
-            showNotification('You are on Dashboard', 'info');
-            break;
-        case 'history':
-            showNotification('Donation History section', 'info');
-            break;
-        case 'requests':
-            showNotification('Blood Requests section', 'info');
-            break;
-        case 'profile':
-            showNotification('Profile section', 'info');
-            break;
-        case 'certificates':
-            showNotification('Certificates section coming soon!', 'info');
-            break;
+    // Hide all sections
+    const sections = document.querySelectorAll('.nav-section');
+    sections.forEach(s => {
+        if(s) s.style.display = 'none';
+        if(s) s.classList.remove('active');
+    });
+    
+    // Show target section
+    const targetSection = document.getElementById(`${section}-section`);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+        // Add animation class after a tiny delay to allow display to apply
+        setTimeout(() => {
+            targetSection.classList.add('active');
+        }, 10);
     }
 }
 
