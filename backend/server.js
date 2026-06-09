@@ -344,7 +344,7 @@ const DonationHistory = mongoose.model('DonationHistory', donationHistorySchema)
 // ============================================
 
 // Health Check
-app.get('/', (req, res) => {
+app.get(['/', '/api'], (req, res) => {
     res.json({ 
         message: 'BloodConnect API is running',
         status: 'OK',

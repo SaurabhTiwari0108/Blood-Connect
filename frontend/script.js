@@ -396,7 +396,7 @@ if (googleBtn) {
 // ============================================
 async function checkServerStatus() {
     try {
-        const response = await fetch(API_URL.replace('/api', '/'));
+        const response = await fetch(API_URL);
         const data = await response.json();
         console.log('Server status:', data);
         return true;
