@@ -1099,11 +1099,13 @@ app.get('/api/bloodbanks', async (req, res) => {
 // ============================================
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-    console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`🔗 API URL: http://localhost:${PORT}`);
-    console.log(`📝 Test the API at: http://localhost:${PORT}/`);
-});
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server is running on port ${PORT}`);
+        console.log(`🔗 API URL: http://localhost:${PORT}`);
+        console.log(`📝 Test the API at: http://localhost:${PORT}/`);
+    });
+}
 
 // DELETE USER - ONLY FOR TESTING
 app.delete('/api/users/email/:email', async (req, res) => {
